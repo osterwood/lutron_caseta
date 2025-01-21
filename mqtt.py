@@ -294,8 +294,7 @@ class MQTT():
                 self._log.warning("can't run {} from MQTT".format(command))
                 return None
             try:
-                self._log.info('Received command: {}'.format(command))
-                self._log.info('args: {}'.format(args))
+                self._log.debug('Received command: {} {}'.format(command, args))
                 
                 if args:
                     value = await self._method_dict[command](*args)

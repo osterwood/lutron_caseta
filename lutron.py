@@ -25,6 +25,7 @@ import sys, argparse, os
 from datetime import timedelta
 from inspect import signature
 import asyncio
+import time
 
 from pylutron_caseta.smartbridge import Smartbridge, _LEAP_DEVICE_TYPES
 
@@ -57,7 +58,7 @@ class Device():
             
     @property
     def name(self):
-        return self.device['name']
+        return self.device['name'].replace(" ","_").lower()
         
     @property
     def device_id(self):
@@ -362,7 +363,7 @@ class Caseta(MQTT):
             value = value[0]
         if isinstance(value, str):
             value = 0 if value.upper() == 'OFF' else 100 if value.upper() == 'ON' else int(value)
-        self.log.info('Setting: {}, to: {}%, fade time: {} s'.format(self._device_name(device_id), value, fade_time))
+        self.log.debug('Setting: {}, to: {}%, fade time: {} s'.format(self._device_name(device_id), value, fade_time))
         await self.bridge.set_value(device_id, value, timedelta(seconds=fade_time)) 
         
     async def _button_action(self, button_id, action):
@@ -403,7 +404,7 @@ class Caseta(MQTT):
         device_name = msg.topic.split('/')[-2]
         device_name = msg.topic.split('/')[-1] if device_name == self._name else device_name
         device_name = None if device_name == command else device_name
-        self.log.info('Received command: {}, device: {}, args: {}'.format(command, device_name, args))
+        self.log.debug('Received command: {}, device: {}, args: {}'.format(command, device_name, args))
         args = [args] if not isinstance(args, list) else args
         nparams = len(signature(self._method_dict[command]).parameters) if command else len(args)
         br = self.bridge if command in self.bridge_methods.keys() else None
@@ -417,7 +418,7 @@ class Caseta(MQTT):
         if br:
             args.insert(0, br)
         args = args[:nparams]  #truncate extra parameters
-        self.log.info('Sending command: command: {}, args: {}'.format(command, args))
+        self.log.debug('Sending command: command: {}, args: {}'.format(command, args))
         return command, args
         
     def stop(self):
@@ -553,6 +554,13 @@ if __name__ == "__main__":
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
+        
+    while True:
+        time.sleep(1)
+        if os.system('systemctl is-active --quiet emqx') == 0:
+            break
+        else:
+            print("waiting on EMQX")	
 
     #setup logging
     log_name = 'Main'
